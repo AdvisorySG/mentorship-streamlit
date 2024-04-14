@@ -25,14 +25,9 @@ st.subheader("Demo Dashboard for Streamlit App")
 conn = st.connection('mysql', type='sql')
 
 # Perform query.
-df = conn.query('SELECT * from mytable;', ttl=600)
-
-# Print results.
-for row in df.itertuples():
-    st.write(f"{row.name} has a :{row.pet}:")
-# sqlalchemy.exc.OperationalError: (MySQLdb.OperationalError) (2002, "Can't connect to server on '54.151.146.248' (10060)")
-
-
+# event_data, report, session, session_data, team, team_user, user, website, website_event
+# df = conn.query('SELECT * from website_event;', ttl=600)
+# st.dataframe(df)
 
 df = pd.DataFrame({
     'Product Category': ['Electronics', 'Clothing', 'Home & Kitchen', 'Beauty & Personal Care', 'Sports & Outdoors',
