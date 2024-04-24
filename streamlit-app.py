@@ -26,8 +26,8 @@ conn = st.connection('mysql', type='sql')
 
 # Perform query.
 # event_data, report, session, session_data, team, team_user, user, website, website_event
-# df = conn.query('SELECT * from website_event;', ttl=600)
-# st.dataframe(df)
+df = conn.query('SELECT COUNT(session_id) from website_event;', ttl=600)
+st.dataframe(df)
 
 df = pd.DataFrame({
     'Product Category': ['Electronics', 'Clothing', 'Home & Kitchen', 'Beauty & Personal Care', 'Sports & Outdoors',
