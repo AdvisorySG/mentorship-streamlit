@@ -17,6 +17,7 @@ SQLAlchemy = "^2.0.30"
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^3.7.0"
 black = "^24.4.2"
+mypy = "^1.10.0"
 
 [build-system]
 requires = ["poetry-core"]
