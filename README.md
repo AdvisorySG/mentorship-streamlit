@@ -12,8 +12,18 @@ The main script is `streamlit-app.py` which contains the demo dashboard as well 
 ```
 
 ### Getting Started
+
+First set up [Poetry](https://python-poetry.org/docs/#installation), which is used to manage dependencies.
+
+Then execute the following commands:
 ```bash
-pip install -r requirements.txt
-streamlit run streamlit-app.py
-# Access the dashboard by navigating to the provided URL in your web browser.
+$ poetry shell # enter the virtualenv created by Poetry
+$ poetry install --no-root # install dependencies using Poetry
+$ streamlit run streamlit-app.py # access the dashboard by navigating to the provided URL in your web browser
+```
+
+Now set up [pre-commit hooks](https://pre-commit.com/):
+
+```bash
+$ pre-commit install
 ```
