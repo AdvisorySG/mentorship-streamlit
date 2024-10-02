@@ -12,7 +12,7 @@
 
 	// 👇 Use 'postCreateCommand' to run commands after the container is created.
 	"postCreateCommand": "poetry install",
-	"postStartCommand": "poetry run streamlit run streamlit-app.py",
+	"postStartCommand": "poetry run streamlit run streamlit_app.py",
 
 	// 👇 Configure tool-specific properties.
 	"customizations": {
