@@ -11,7 +11,8 @@
 	// "forwardPorts": [],
 
 	// 👇 Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "poetry install && poetry run streamlit run streamlit-app.py",
+	"postCreateCommand": "poetry install",
+	"postStartCommand": "poetry run streamlit run streamlit-app.py",
 
 	// 👇 Configure tool-specific properties.
 	"customizations": {
