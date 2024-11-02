@@ -170,3 +170,5 @@ cython_debug/
 *.csv
 *.htm
 .streamlit/secrets.toml
+
+!.devcontainer/Dockerfile
