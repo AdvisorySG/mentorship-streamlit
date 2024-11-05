@@ -73,14 +73,14 @@ with col2:
     parsed_df = parsing_urls(df)
     parsed_df_filtered = parsing_urls(df_filtered)
     mode = parsed_df["industries"].mode().iloc[0][0]
-    value_counts = parsed_df_filtered["industries"].value_counts()
-    value_df = pd.DataFrame(
-        {"industries": value_counts.index, "count": value_counts.values}
+    value_counts_filtered = parsed_df_filtered["industries"].value_counts()
+    value_df_filtered = pd.DataFrame(
+        {"industries": value_counts_filtered.index, "count": value_counts_filtered.values}
     )
     st.metric(
         label="Most popular filter in the past month",
         value=f"{mode}",
-        delta=f"{value_counts.iloc[0]} in the past month",
+        delta=f"{value_counts_filtered.iloc[0]} in the past month",
     )
 
 with col3:
@@ -110,9 +110,12 @@ st.subheader("Select a graph to represent the data!")
 
 chart_options = ["Pie chart", "Bar chart"]
 chart_type = st.multiselect("Select the type of chart:", chart_options)
-
+value_counts = parsed_df["industries"].value_counts()
+value_df = pd.DataFrame(
+    {"industries": value_counts.index, "count": value_counts.values}
+) 
 if chart_type == "Pie chart":
-    st.dataframe(pie_chart(df))
+    #pie_chart(value_df)
 
 else:
-    st.dataframe(bar_chart(df))
+    #pie_chart(value_df)
