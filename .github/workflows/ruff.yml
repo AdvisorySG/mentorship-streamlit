@@ -16,5 +16,4 @@ jobs:
         with:
           cache: poetry
 
-      - run: poetry shell
       - run: poetry run -- ruff check --output-format=github .
