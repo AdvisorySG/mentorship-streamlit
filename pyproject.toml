@@ -17,8 +17,7 @@ numpy = "^2.1.0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^3.7.0"
-black = "^24.4.2"
-mypy = "^1.10.0"
+ruff = "^0.7.2"
 
 [build-system]
 requires = ["poetry-core"]
