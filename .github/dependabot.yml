@@ -5,10 +5,17 @@
 
 version: 2
 updates:
-  - package-ecosystem: pip
+  - package-ecosystem: "pip"
     directory: "/"
     schedule:
       interval: "weekly"
     reviewers:
       - "AdvisorySG/data-team-reviewers"
     open-pull-requests-limit: 3
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    reviewers:
+      - "AdvisorySG/ghost-reviewers"
+    open-pull-requests-limit: 1
