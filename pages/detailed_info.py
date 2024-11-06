@@ -1,8 +1,4 @@
-import pandas as pd
-import plotly.express as px
-import numpy as np
 import streamlit as st
-from st_pages import Page, show_pages, add_page_title
 
 
 st.title("Detailed Information Dashboard")
@@ -11,7 +7,7 @@ st.title("Detailed Information Dashboard")
 conn = st.connection("mysql", type="sql")
 
 # main juicy stuff
-from auxiliary_functions import parsing_urls, filter_dataframe, pie_chart, bar_chart
+from auxiliary_functions import parsing_urls, filter_dataframe
 
 df = conn.query("select * from website_event;")
 

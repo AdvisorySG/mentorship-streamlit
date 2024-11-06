@@ -1,4 +1,3 @@
-import numpy as np
 import pandas as pd
 import plotly.express as px
 import streamlit as st
@@ -46,7 +45,7 @@ conn = st.connection("mysql", type="sql")
 # bar_chart_col.plotly_chart(fig_bar)
 
 # main juicy stuff
-from auxiliary_functions import parsing_urls, filter_dataframe, pie_chart, bar_chart
+from auxiliary_functions import parsing_urls, pie_chart, bar_chart
 
 # st.write(conn.query('SHOW TABLES;'))
 df = conn.query("select * from website_event;")
