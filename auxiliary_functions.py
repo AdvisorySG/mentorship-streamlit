@@ -31,6 +31,8 @@ def process_query_params(params):
     for key, value in params.items():
         if "filters" in key:
             parts = key.split("[")
+            if len(parts) < 3:
+                continue
             field_or_value = parts[2].strip("]")
 
             if field_or_value == "field":
@@ -39,7 +41,7 @@ def process_query_params(params):
                 result[current_field] = []
             elif field_or_value == "type":
                 # there's a type of all in all queries, not sure what that is and whether its relevant
-                pass
+                continue
             else:
                 # if its a value then add it to the list by using the last saved field
                 result[current_field].extend(value)
@@ -114,35 +116,16 @@ def filter_dataframe(df):
 
 
 def pie_chart(df):
-    df_10 = (
-        df.groupby(["name"])
-        .size()
-        .to_frame()
-        .sort_values([0], ascending=False)
-        .head(10)
-        .reset_index()
-    )
+    # df_10 = df.groupby(['name']).size().to_frame().sort_values([0], ascending = False).head(10).reset_index()
     fig_pie = px.pie(
-        df_10, names="name", title="Top 10 most selected industries", hole=0.4
+        df.head(10), names="count", title="Top 10 most selected industries", hole=0.4
     )
-    pie_chart_col.plotly_chart(fig_pie)
+    st.plotly_chart(fig_pie)
 
 
 def bar_chart(df):
-    df_10 = (
-        df.groupby(["name"])
-        .size()
-        .to_frame()
-        .sort_values([0], ascending=False)
-        .head(10)
-        .reset_index()
-    )
-    fig_bar = px.bar(
-        df_10.value_counts(),
-        x=df["Product Category"].value_counts().index,
-        y=df["Industry"].value_counts().values,
-        labels={"x": "Industry", "y": "Count"},
-        title="Top 10 most selected industries",
-        color=df["name"].value_counts().index,
-    )
-    bar_chart_col.plotly_chart(fig_bar)
+    return df.head(10)
+    # df_10 = df.groupby(['name']).size().to_frame().sort_values([0], ascending = False).head(10).reset_index()
+    # fig_bar = px.bar(df_10.value_counts(), x=df['Product Category'].value_counts().index, y=df['Industry'].value_counts().values,
+    #                 labels={'x': 'Industry', 'y': 'Count'}, title='Top 10 most selected industries', color=df['name'].value_counts().index)
+    # bar_chart_col.plotly_chart(fig_bar)
