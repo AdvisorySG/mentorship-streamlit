@@ -31,8 +31,7 @@ RUN apt-get install -y python3-dev default-libmysqlclient-dev build-essential pk
 # Python and poetry installation
 USER $USER
 ARG HOME="/home/$USER"
-ARG PYTHON_VERSION=3.11
-# ARG PYTHON_VERSION=3.10
+ARG PYTHON_VERSION=3.11.10
 
 ENV PYENV_ROOT="${HOME}/.pyenv"
 ENV PATH="${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${HOME}/.local/bin:$PATH"
