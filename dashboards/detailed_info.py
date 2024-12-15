@@ -1,4 +1,7 @@
+import datetime
 import streamlit as st
+
+from auxiliary_functions import parsing_urls, filter_dataframe
 
 
 st.title("Detailed Information Dashboard")
@@ -7,7 +10,6 @@ st.title("Detailed Information Dashboard")
 conn = st.connection("mysql", type="sql")
 
 # main juicy stuff
-from auxiliary_functions import parsing_urls, filter_dataframe
 
 df = conn.query("select * from website_event;")
 
@@ -17,7 +19,6 @@ st.dataframe(filter_dataframe(parsing_urls(df)))
 
 # shows last 24h stats
 st.subheader("This shows queries in the last 24h")
-import datetime
 
 end_time = datetime.datetime.now()
 start_time = end_time - datetime.timedelta(hours=24)
