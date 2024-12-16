@@ -9,6 +9,7 @@ pg = st.navigation(
     [
         Page("pages/home.py", title="Home", icon="🏠"),
         Page("pages/detailed_info.py", title="Detailed Information", icon="🌐"),
+        Page("pages/avg_screentime.py", title="Average Screentime", icon="🌐"),
     ]
 )
 st.set_page_config(page_title="Streamlit Dashboard", page_icon="📈", layout="wide")
