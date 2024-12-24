@@ -63,4 +63,4 @@ def setup_umamidb(cur: duckdb.DuckDBPyConnection):
         PASSWORD '{UMAMIDB_PASSWORD}'
     );
     """)
-    cur.sql("ATTACH '' AS umamidb (TYPE mysql_scanner, READ_ONLY);")
+    cur.sql("ATTACH '' AS umamidb (TYPE MYSQL, READ_ONLY);")
