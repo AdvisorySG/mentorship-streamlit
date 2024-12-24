@@ -1,13 +1,46 @@
 import duckdb
+from elasticsearch.client import Elasticsearch
+from elasticsearch.helpers import scan
 import streamlit as st
 
+import json
+import tempfile
 
-@st.cache_resource
+
+@st.cache_resource(ttl=900, max_entries=1)
 def get_dbcur() -> duckdb.DuckDBPyConnection:
-    con = duckdb.connect(":memory:")
+    con = duckdb.connect()
     cur = con.cursor()
+    setup_elasticsearch(cur)
     setup_umamidb(cur)
+    cur.execute("")
     return cur
+
+
+ELASTICSEARCH_HOST = st.secrets.connections.elasticsearch.host
+ELASTICSEARCH_PORT = st.secrets.connections.elasticsearch.port
+ELASTICSEARCH_APIKEY = st.secrets.connections.elasticsearch.apikey
+ELASTICSEARCH_INDEX = st.secrets.connections.elasticsearch.index
+ELASTICSEARCH_CHUNKSIZE = st.secrets.connections.elasticsearch.chunksize
+
+
+def setup_elasticsearch(cur: duckdb.DuckDBPyConnection):
+    client = Elasticsearch(
+        f"https://{ELASTICSEARCH_HOST}:{ELASTICSEARCH_PORT}",
+        api_key=ELASTICSEARCH_APIKEY,
+    )
+    with tempfile.NamedTemporaryFile("w", suffix=".ndjson", delete=False) as f:
+        for result in scan(
+            client,
+            index=ELASTICSEARCH_INDEX,
+            query={"query": {"match_all": {}}},
+        ):
+            f.write(json.dumps(result["_source"]) + "\n")
+        f.flush()
+
+        cur.sql(f"""CREATE TABLE elasticsearch AS
+                SELECT *
+                FROM read_ndjson('{f.name}');""")
 
 
 UMAMIDB_HOST = st.secrets.connections.mysql.host
