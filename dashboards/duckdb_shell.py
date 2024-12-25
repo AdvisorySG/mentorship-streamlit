@@ -26,6 +26,6 @@ for query in res["text"].split(";"):
         df = cur.pl()
         end = time.time()
         st.write(df)
-        st.write(f"Time taken: {end - start}s")
+        st.write(f"Time taken: {end - start} s")
     except Exception:
         st.code(traceback.format_exc())
