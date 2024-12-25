@@ -12,9 +12,10 @@ def get_dbcur() -> duckdb.DuckDBPyConnection:
     con = duckdb.connect()
     cur = con.cursor()
     cur.sql("SET TIMEZONE='UTC';")
+    cur.sql("BEGIN TRANSACTION;")
     setup_elasticsearch(cur)
     setup_umamidb(cur)
-    cur.execute("")
+    cur.sql("COMMIT;")
     return cur
 
 
