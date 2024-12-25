@@ -22,7 +22,6 @@ ELASTICSEARCH_HOST = st.secrets.connections.elasticsearch.host
 ELASTICSEARCH_PORT = st.secrets.connections.elasticsearch.port
 ELASTICSEARCH_APIKEY = st.secrets.connections.elasticsearch.apikey
 ELASTICSEARCH_INDEX = st.secrets.connections.elasticsearch.index
-ELASTICSEARCH_CHUNKSIZE = st.secrets.connections.elasticsearch.chunksize
 
 
 def setup_elasticsearch(cur: duckdb.DuckDBPyConnection):
