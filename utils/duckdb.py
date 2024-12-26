@@ -11,11 +11,20 @@ import tempfile
 def get_dbcur() -> duckdb.DuckDBPyConnection:
     con = duckdb.connect()
     cur = con.cursor()
-    cur.sql("SET TIMEZONE='UTC';")
+
+    # enable correct handling of timestamptz from MySQL
+    cur.sql("SET TimeZone = 'UTC';")
+
     cur.sql("BEGIN TRANSACTION;")
     setup_elasticsearch(cur)
     setup_umamidb(cur)
     cur.sql("COMMIT;")
+
+    # disable external file access once all required files are read
+    # see https://duckdb.org/docs/operations_manual/securing_duckdb/overview
+    cur.sql("SET enable_external_access = false;")
+
+    cur.sql("SET lock_configuration = true;")
     return cur
 
 
