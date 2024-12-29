@@ -9,19 +9,38 @@ st.title("Clicks & Impressions Dashboard")
 cur = get_dbcur()
 
 query = """
+WITH ranked_events AS (
+    SELECT 
+        ed.website_event_id,
+        es.id AS mentor_id,
+        ANY_VALUE(es.name) AS mentor_name,
+        SUM(CASE WHEN we.event_name = 'Click' THEN 1 ELSE 0 END) AS click_count, -- convert to numeric for counting
+        SUM(CASE WHEN we.event_name = 'Impression' THEN 1 ELSE 0 END) AS impression_count
+    FROM 
+        umamidb.event_data ed
+    JOIN 
+        umamidb.website_event we
+        ON ed.website_event_id = we.event_id
+    JOIN 
+        memory.elasticsearch es
+        ON es.id = ed.string_value
+    WHERE 
+        (we.event_name = 'Click' OR we.event_name = 'Impression')
+        AND we.url_path LIKE '/mentors%'
+        AND we.referrer_path LIKE '/mentors%'
+    GROUP BY 
+        ed.website_event_id, 
+        es.id
+)
+
 SELECT 
-    ed.website_event_id,
-    SUM(CASE WHEN we.event_name = 'Click' THEN 1 ELSE 0 END) AS click_count,
-    SUM(CASE WHEN we.event_name = 'Impression' THEN 1 ELSE 0 END) AS impression_count
+    mentor_name,
+    SUM(click_count) AS total_clicks,
+    SUM(impression_count) AS total_impressions
 FROM 
-    umamidb.event_data ed
-JOIN 
-    umamidb.website_event we
-    ON ed.website_event_id = we.event_id
-WHERE 
-    ed.data_key = 'env' AND ed.string_value = 'production'
+    ranked_events
 GROUP BY 
-    ed.website_event_id
+    mentor_name -- group by mentor name as there are some ids that produce duplicate mentor names
 ORDER BY 
-    ed.website_event_id
+    total_clicks DESC;
 """
