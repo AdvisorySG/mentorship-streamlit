@@ -44,3 +44,49 @@ GROUP BY
 ORDER BY 
     total_clicks DESC;
 """
+
+df = cur.execute(query).fetch_df()
+top_20_clicks = df.nlargest(20, 'total_clicks')
+top_20_impressions = df.nlargest(20, 'total_impressions')
+
+# table to show data
+st.subheader("Mentors Data")
+st.dataframe(df)
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.subheader("Top 20 by Clicks")
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.bar(top_20_clicks['mentor_name'], top_20_clicks['total_clicks'], color='skyblue')
+    ax.set_xlabel('Mentor Name')
+    ax.set_ylabel('Total Clicks')
+    ax.set_title('Top 20 Mentors - Clicks')
+    ax.tick_params(axis='x', rotation=45)
+    st.pyplot(fig)
+
+    st.subheader("Total Clicks")
+    fig, ax = plt.subplots()
+    ax.hist(df['total_clicks'], bins=15, color='skyblue', edgecolor='black')
+    ax.set_xlabel('Total Clicks')
+    ax.set_ylabel('Number of Mentors')
+    ax.set_title('Distribution of Clicks Across Mentors')
+    st.pyplot(fig)
+
+with col2:
+    st.subheader("Top 20 by Impressions")
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.bar(top_20_impressions['mentor_name'], top_20_impressions['total_impressions'], color='lightgreen')
+    ax.set_xlabel('Mentor Name')
+    ax.set_ylabel('Total Impressions')
+    ax.set_title('Top 20 Mentors - Impressions')
+    ax.tick_params(axis='x', rotation=45)
+    st.pyplot(fig)
+
+    st.subheader("Total Impressions")
+    fig, ax = plt.subplots()
+    ax.hist(df['total_impressions'], bins=15, color='lightgreen', edgecolor='black')
+    ax.set_xlabel('Total Impressions')
+    ax.set_ylabel('Number of Mentors')
+    ax.set_title('Distribution of Impressions Across Mentors')
+    st.pyplot(fig)
