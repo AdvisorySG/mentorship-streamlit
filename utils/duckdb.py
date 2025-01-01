@@ -3,13 +3,29 @@ from elasticsearch.client import Elasticsearch
 from elasticsearch.helpers import scan
 import streamlit as st
 
+import os
+import atexit
 import json
 import tempfile
 
 
+_temp_files = []
+
+def cleanup_temp_files():
+    for f in _temp_files:
+        try:
+            if os.path.exists(f):
+                os.remove(f)
+        except FileNotFoundError:
+            pass
+        except PermissionError:
+            pass
+        except OSError:
+            pass
+
 @st.cache_resource(ttl=900, max_entries=1)
 def get_dbcur() -> duckdb.DuckDBPyConnection:
-    con = duckdb.connect()
+    con = duckdb.connect(':memory:')
     cur = con.cursor()
 
     # enable correct handling of timestamptz from MySQL
@@ -25,6 +41,8 @@ def get_dbcur() -> duckdb.DuckDBPyConnection:
     cur.sql("SET enable_external_access = false;")
 
     cur.sql("SET lock_configuration = true;")
+
+    atexit.register(cleanup_temp_files)
     return cur
 
 
@@ -39,18 +57,20 @@ def setup_elasticsearch(cur: duckdb.DuckDBPyConnection):
         f"https://{ELASTICSEARCH_HOST}:{ELASTICSEARCH_PORT}",
         api_key=ELASTICSEARCH_APIKEY,
     )
-    with tempfile.NamedTemporaryFile("w", suffix=".ndjson", delete=False) as f:
+    
+    temp_file = tempfile.mktemp(suffix='.ndjson')
+    _temp_files.append(temp_file)
+    
+    with open(temp_file, 'w') as f:
         for result in scan(
             client,
             index=ELASTICSEARCH_INDEX,
             query={"query": {"match_all": {}}},
         ):
             f.write(json.dumps(result["_source"]) + "\n")
-        f.flush()
-
-        cur.sql(f"""CREATE TABLE elasticsearch AS
-                SELECT *
-                FROM read_ndjson('{f.name}');""")
+    
+    cur.sql(f"""CREATE TABLE IF NOT EXISTS elasticsearch AS 
+            SELECT * FROM read_ndjson('{temp_file}');""")
 
 
 UMAMIDB_HOST = st.secrets.connections.mysql.host
