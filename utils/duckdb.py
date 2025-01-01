@@ -3,6 +3,7 @@ from elasticsearch.client import Elasticsearch
 from elasticsearch.helpers import scan
 import streamlit as st
 
+import os
 import atexit
 import json
 import tempfile
@@ -15,7 +16,11 @@ def cleanup_temp_files():
         try:
             if os.path.exists(f):
                 os.remove(f)
-        except:
+        except FileNotFoundError:
+            pass
+        except PermissionError:
+            pass
+        except OSError:
             pass
 
 @st.cache_resource(ttl=900, max_entries=1)
