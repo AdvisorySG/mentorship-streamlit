@@ -8,15 +8,28 @@ st.title("Clicks & Impressions Dashboard")
 cur = get_dbcur()
 
 query = """
-WITH ranked_events AS (
+WITH production_events AS (
+    SELECT website_event_id
+    FROM umamidb.event_data
+    WHERE data_key = 'env' 
+    AND string_value = 'production'
+),
+mentor_events AS (
     SELECT 
         ed.website_event_id,
         es.id AS mentor_id,
         ANY_VALUE(es.name) AS mentor_name,
         SUM(CASE WHEN we.event_name = 'Click' THEN 1 ELSE 0 END) AS click_count,
-        SUM(CASE WHEN we.event_name = 'Impression' THEN 1 ELSE 0 END) AS impression_count
+        SUM(CASE WHEN we.event_name = 'Impression' THEN 1 ELSE 0 END) AS impression_count,
+        CASE 
+            WHEN click_count + impression_count != 1 
+            THEN 'error!! an event is missing or multiple events occured'
+        END as data_quality_check
     FROM 
         umamidb.event_data ed
+    JOIN 
+        production_events pe
+        ON ed.website_event_id = pe.website_event_id
     JOIN 
         umamidb.website_event we
         ON ed.website_event_id = we.event_id
@@ -25,20 +38,22 @@ WITH ranked_events AS (
         ON es.id = ed.string_value
     WHERE 
         (we.event_name = 'Click' OR we.event_name = 'Impression')
-        AND we.url_path LIKE '/mentors%'
-        AND we.referrer_path LIKE '/mentors%'
+        AND ed.data_key = 'id' 
     GROUP BY 
         ed.website_event_id, 
         es.id
+    HAVING 
+        click_count + impression_count = 1
 )
 
 SELECT 
     mentor_id,
     ANY_VALUE(mentor_name) AS mentor_name,
     SUM(click_count) AS total_clicks,
-    SUM(impression_count) AS total_impressions
+    SUM(impression_count) AS total_impressions,
+    COUNT(*) as total_events
 FROM 
-    ranked_events
+    mentor_events
 GROUP BY 
     mentor_id
 ORDER BY 
