@@ -11,58 +11,50 @@ query = """
 WITH production_events AS (
     SELECT website_event_id
     FROM umamidb.event_data
-    WHERE data_key = 'env' 
+    WHERE data_key = 'env'
     AND string_value = 'production'
-),
-mentor_events AS (
-    SELECT 
+), mentor_events AS (
+    SELECT
         ed.website_event_id,
         es.id AS mentor_id,
         ANY_VALUE(es.name) AS mentor_name,
         SUM(CASE WHEN we.event_name = 'Click' THEN 1 ELSE 0 END) AS click_count,
         SUM(CASE WHEN we.event_name = 'Impression' THEN 1 ELSE 0 END) AS impression_count,
-        CASE 
-            WHEN click_count + impression_count != 1 
-            THEN 'error!! an event is missing or multiple events occured'
-        END as data_quality_check
-    FROM 
+    FROM
         umamidb.event_data ed
-    JOIN 
+    JOIN
         production_events pe
         ON ed.website_event_id = pe.website_event_id
-    JOIN 
+    JOIN
         umamidb.website_event we
         ON ed.website_event_id = we.event_id
-    JOIN 
+    JOIN
         memory.elasticsearch es
         ON es.id = ed.string_value
-    WHERE 
+    WHERE
         (we.event_name = 'Click' OR we.event_name = 'Impression')
-        AND ed.data_key = 'id' 
-    GROUP BY 
-        ed.website_event_id, 
+        AND ed.data_key = 'id'
+    GROUP BY
+        ed.website_event_id,
         es.id
-    HAVING 
-        click_count + impression_count = 1
 )
-
-SELECT 
-    mentor_id,
-    ANY_VALUE(mentor_name) AS mentor_name,
-    SUM(click_count) AS total_clicks,
-    SUM(impression_count) AS total_impressions,
-    COUNT(*) as total_events
-FROM 
-    mentor_events
-GROUP BY 
-    mentor_id
-ORDER BY 
-    total_clicks DESC;
+    SELECT
+        mentor_id,
+        ANY_VALUE(mentor_name) AS mentor_name,
+        SUM(click_count) AS total_clicks,
+        SUM(impression_count) AS total_impressions,
+        COUNT(*) as total_events
+    FROM
+        mentor_events
+    GROUP BY
+        mentor_id
+    ORDER BY
+        total_clicks DESC;
 """
 
 df = cur.execute(query).fetch_df()
-top_20_clicks = df.nlargest(20, 'total_clicks')
-top_20_impressions = df.nlargest(20, 'total_impressions')
+top_20_clicks = df.nlargest(20, "total_clicks")
+top_20_impressions = df.nlargest(20, "total_impressions")
 
 # table to show data
 st.subheader("Mentors Data")
@@ -73,35 +65,39 @@ col1, col2 = st.columns(2)
 with col1:
     st.subheader("Top 20 by Clicks")
     fig, ax = plt.subplots(figsize=(10, 6))
-    ax.bar(top_20_clicks['mentor_name'], top_20_clicks['total_clicks'], color='skyblue')
-    ax.set_xlabel('Mentor Name')
-    ax.set_ylabel('Total Clicks')
-    ax.set_title('Top 20 Mentors - Clicks')
-    ax.tick_params(axis='x', rotation=45)
+    ax.bar(top_20_clicks["mentor_name"], top_20_clicks["total_clicks"], color="skyblue")
+    ax.set_xlabel("Mentor Name")
+    ax.set_ylabel("Total Clicks")
+    ax.set_title("Top 20 Mentors - Clicks")
+    ax.tick_params(axis="x", rotation=45)
     st.pyplot(fig)
 
     st.subheader("Total Clicks")
     fig, ax = plt.subplots()
-    ax.hist(df['total_clicks'], bins=15, color='skyblue', edgecolor='black')
-    ax.set_xlabel('Total Clicks')
-    ax.set_ylabel('Number of Mentors')
-    ax.set_title('Distribution of Clicks Across Mentors')
+    ax.hist(df["total_clicks"], bins=15, color="skyblue", edgecolor="black")
+    ax.set_xlabel("Total Clicks")
+    ax.set_ylabel("Number of Mentors")
+    ax.set_title("Distribution of Clicks Across Mentors")
     st.pyplot(fig)
 
 with col2:
     st.subheader("Top 20 by Impressions")
     fig, ax = plt.subplots(figsize=(10, 6))
-    ax.bar(top_20_impressions['mentor_name'], top_20_impressions['total_impressions'], color='lightgreen')
-    ax.set_xlabel('Mentor Name')
-    ax.set_ylabel('Total Impressions')
-    ax.set_title('Top 20 Mentors - Impressions')
-    ax.tick_params(axis='x', rotation=45)
+    ax.bar(
+        top_20_impressions["mentor_name"],
+        top_20_impressions["total_impressions"],
+        color="lightgreen",
+    )
+    ax.set_xlabel("Mentor Name")
+    ax.set_ylabel("Total Impressions")
+    ax.set_title("Top 20 Mentors - Impressions")
+    ax.tick_params(axis="x", rotation=45)
     st.pyplot(fig)
 
     st.subheader("Total Impressions")
     fig, ax = plt.subplots()
-    ax.hist(df['total_impressions'], bins=15, color='lightgreen', edgecolor='black')
-    ax.set_xlabel('Total Impressions')
-    ax.set_ylabel('Number of Mentors')
-    ax.set_title('Distribution of Impressions Across Mentors')
+    ax.hist(df["total_impressions"], bins=15, color="lightgreen", edgecolor="black")
+    ax.set_xlabel("Total Impressions")
+    ax.set_ylabel("Number of Mentors")
+    ax.set_title("Distribution of Impressions Across Mentors")
     st.pyplot(fig)
