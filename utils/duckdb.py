@@ -158,6 +158,6 @@ def get_db(cur, columns):
     # Basically loop through the columns (above) and extracts out each part in the json obj as a new column
     sql_json_query = ", ".join([f"CAST(json_extract(url_params, '{col_name}') AS VARCHAR[]) AS {col_name}" for col_name in ["search_query"] + columns])
     # 4. Convert the json-like object to columns
-    tmp_db = duckdb.query(f"SELECT visit_id, {sql_json_query} FROM tmp_db").to_df()
+    tmp_db = duckdb.query(f"SELECT created_at, visit_id, {sql_json_query} FROM tmp_db").to_df()
     return tmp_db
 
