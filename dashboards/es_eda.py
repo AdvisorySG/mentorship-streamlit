@@ -13,7 +13,9 @@ st.title("ES EDA Dashboard!")
 st.subheader("ES Data Snapshot")
 st.dataframe(es_df)
 
-st.subheader("P1: Course of Study")
+# --------------------------------------------------------------------------------------
+
+st.subheader("P1: Course of Study (TODO)")
 
 # 1. Value Counts (Bar Chart)
 st.subheader("Course of Study Distribution")
@@ -51,11 +53,13 @@ fig_bar_top_k = px.bar(
 )
 st.plotly_chart(fig_bar_top_k)
 
-# todo:
+# TODO:
 # remove nulls
 # For bar charts: insert calculation and showing each course % of total popn (eg econs = 12%, biz = 8.3%)
 # jared to look into - clustering or semantic grouping based on similar courses? since some courses with smaller representation are subset of bigger ones
 
+
+# --------------------------------------------------------------------------------------
 
 st.subheader("P2: Industries")
 
@@ -91,6 +95,7 @@ fig_bar_top_k = px.bar(
 )
 st.plotly_chart(fig_bar_top_k)
 
+# --------------------------------------------------------------------------------------
 
 st.subheader("P3: Organisations")
 
@@ -127,3 +132,39 @@ fig_bar_top_k = px.bar(
     top_k_orgs, x="Organisation", y="Count", title=f"Top {top_k} Organisation Counts"
 )
 st.plotly_chart(fig_bar_top_k)
+
+# --------------------------------------------------------------------------------------
+
+st.subheader("P4: Roles (TODO)")
+
+role_counts_desc = es_df["role"].value_counts(sort=True)
+role_counts_desc.columns = ["Role", "Count"]
+st.dataframe(role_counts_desc)
+
+
+# TODO:
+# bar n pie chart of all plus Top K with sliding car (refer to above previously done code)
+# jared to look into - clustering or semantic grouping based on seniority
+
+# --------------------------------------------------------------------------------------
+
+st.subheader("P5: Schools (TODO)")
+
+school_counts_desc = es_df["school"].value_counts(sort=True)
+school_counts_desc.columns = ["School", "Count"]
+st.dataframe(school_counts_desc)
+
+# TODO:
+# bar n pie chart of all plus Top K with sliding car (refer to above previously done code)
+
+# --------------------------------------------------------------------------------------
+
+st.subheader("P6: Waves (TODO)")
+
+waveid_counts_desc = es_df["wave_id"].value_counts(sort=True)
+waveid_counts_desc.columns = ["WaveID", "Count"]
+st.dataframe(waveid_counts_desc)
+
+# TODO:
+# bar charts showing breakdown organised based on yearly basis (ie. 2021, 2022, ..), values aggregated on year
+# another sub bar chart showing within each year separate waves breakdown; eg 2021 show 2x bars for 2021-1, 2021-2; also 2023 show one set for 2023-2 and 2023-vjc
