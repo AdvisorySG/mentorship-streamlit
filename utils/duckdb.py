@@ -82,7 +82,7 @@ def setup_umamidb(cur: duckdb.DuckDBPyConnection):
 QUERY_INDEX_RE = r"\[(\d+|[a-zA-Z]+)\]"
 
 
-def parse_url_query(query_list: list[str]) -> dict:
+def parse_url_query(query_list: list[str]) -> dict[str, list[str]]:
     # Adapted from process_query_params from auxiliary_functions.py
     # Functionally does the same but modified slightly due to different structure of arguments passed in
     # Also returns a json obj instead of py dict so that duckdb recognizes this structure
@@ -110,7 +110,7 @@ def parse_url_query(query_list: list[str]) -> dict:
 
         key, value = html.unescape(query).split("=")
         if key == "q":
-            result["search_query"].append(value)
+            result["search_query"] = [value]
         elif "filters" in key:
             matches = re.findall(QUERY_INDEX_RE, key)
             if len(matches) < 2:
