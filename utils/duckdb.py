@@ -4,7 +4,10 @@ from elasticsearch.client import Elasticsearch
 from elasticsearch.helpers import scan
 import streamlit as st
 
+from collections import defaultdict
+import html
 import json
+import re
 import tempfile
 
 
@@ -75,12 +78,15 @@ def setup_umamidb(cur: duckdb.DuckDBPyConnection):
     """)
     cur.sql("ATTACH '' AS umamidb (TYPE MYSQL, READ_ONLY);")
 
-def parse_url_query(query_list: list) -> dict:
+
+QUERY_INDEX_RE = r"\[(\d+|[a-zA-Z]+)\]"
+
+
+def parse_url_query(query_list: list[str]) -> dict:
     # Adapted from process_query_params from auxiliary_functions.py
     # Functionally does the same but modified slightly due to different structure of arguments passed in
     # Also returns a json obj instead of py dict so that duckdb recognizes this structure
-    result = {}
-    current_field = ""
+    result = defaultdict(list)
 
     # query_list is a list containing the queries in within the url
     # each query is a string in the format: key=value
@@ -92,35 +98,46 @@ def parse_url_query(query_list: list) -> dict:
     # each url can have multiple filters, filtering by different fields with different values and types
     # this function converts the url into a python dict with the same structure
     # everything is stored as strings
+    filters = defaultdict(
+        lambda: dict(
+            field=None,
+            values=defaultdict(dict),
+        )
+    )
     for query in query_list:
         if "=" not in query:
             continue
-        key, value = query.split("=")
-        if "filters" in key:
-            # a filter was selected
-            parts = key.split("[")
-            if len(parts) < 3:
-                continue
-            field_or_value = parts[2].strip("]") # extracting what is in the second [] -> this will be either field, type or values
 
-            if field_or_value == "field":
-                # if its a field then use it as a key in the dictionary
-                current_field = value
-                result[current_field] = []
-            elif field_or_value == "type":
-                # there's a type of all in all queries, not sure what that is and whether its relevant
+        key, value = html.unescape(query).split("=")
+        if key == "q":
+            result["search_query"].append(value)
+        elif "filters" in key:
+            matches = re.findall(QUERY_INDEX_RE, key)
+            if len(matches) < 2:
                 continue
-            else:
-                # if its a value then add it to the list by using the last saved field
-                result[current_field].append(value)
-        elif key == "q":
-            result["search_query"] = [value]
+            match matches[1]:
+                case "field":
+                    if not len(matches) == 2:
+                        continue
+                    i = matches[0]
+                    filters[i]["field"] = value
 
-    # for eg, if the url has the following queries: 
+                case "values":
+                    if not len(matches) == 3:
+                        continue
+                    i, j = matches[0], matches[2]
+                    filters[i]["values"][j] = value
+
+    for filter in filters.values():
+        field, values = filter["field"], filter["values"].values()
+        result[field].extend(values)
+
+    # for eg, if the url has the following queries:
     #   size=n_80_n&
     #   filters[0][field]=industries&
     #   filters[0][values][0]=Banking and Finance&
-    #   filters[0][type]=all&filters[1][field]=organisation&
+    #   filters[0][type]=all&
+    #   filters[1][field]=organisation&
     #   filters[1][values][0]=Deutsche Bank&
     #   filters[1][type]=any
     # then the result returned would be:
@@ -128,7 +145,8 @@ def parse_url_query(query_list: list) -> dict:
     #     'industries': ['Banking and Finance'],
     #     'organization' : ['Deutsche Bank'],
     # }
-    return dict(result)
+    return result
+
 
 def get_db(cur, columns):
     # Function reads the data from umami and cleans it to the required format
@@ -147,17 +165,22 @@ def get_db(cur, columns):
         QUALIFY row_number() OVER (PARTITION BY url_params, referrer_params, visit_id) = 1
         ORDER BY created_at DESC;
         """).fetchdf()
-    
 
     # 2. Convert the url parameters to json-like object
     tmp_db["url_params"] = tmp_db["url_params"].apply(
-            lambda query_list: json.dumps(parse_url_query(query_list))
-        )  # gets all the query params and makes it a dictionary (parse_url_query) and then serialize into json object (dumps)
+        lambda query_list: json.dumps(parse_url_query(query_list))
+    )  # gets all the query params and makes it a dictionary (parse_url_query) and then serialize into json object (dumps)
 
     # 3. Prepare the SQL query statement to convert the json object into individual columns
     # Basically loop through the columns (above) and extracts out each part in the json obj as a new column
-    sql_json_query = ", ".join([f"CAST(json_extract(url_params, '{col_name}') AS VARCHAR[]) AS {col_name}" for col_name in ["search_query"] + columns])
+    sql_json_query = ", ".join(
+        [
+            f"CAST(json_extract(url_params, '{col_name}') AS VARCHAR[]) AS {col_name}"
+            for col_name in ["search_query"] + columns
+        ]
+    )
     # 4. Convert the json-like object to columns
-    tmp_db = duckdb.query(f"SELECT CAST(created_at AS DATE), visit_id, {sql_json_query} FROM tmp_db").to_df()
+    tmp_db = duckdb.query(
+        f"SELECT CAST(created_at AS DATE), visit_id, {sql_json_query} FROM tmp_db"
+    ).to_df()
     return tmp_db
-
