@@ -21,6 +21,9 @@ website_df = cur.pl()
 # --------------------------------------------------------------------------------------
 
 st.title("Section 1: Umami Session Dashboard!")
+
+st.title("P1: Analytics Across Time Periods")
+
 sess_df["date"] = pd.to_datetime(sess_df["date"])
 st.dataframe(sess_df)
 
@@ -28,19 +31,16 @@ st.dataframe(sess_df)
 daily_counts = sess_df.groupby(sess_df["date"].dt.date).size()
 daily_counts = daily_counts.reset_index(name="count")
 daily_counts.columns = ["day", "count"]
-st.dataframe(daily_counts)
 
 # Weekly Counts
 weekly_counts = sess_df.groupby(sess_df["date"].dt.isocalendar().week).size()
 weekly_counts = weekly_counts.reset_index(name="count")
 weekly_counts.columns = ["week", "count"]
-st.dataframe(weekly_counts)
 
 # Monthly Counts
 monthly_counts = sess_df.groupby(sess_df["date"].dt.month).size()
 monthly_counts = monthly_counts.reset_index(name="count")
 monthly_counts.columns = ["month", "count"]
-st.dataframe(monthly_counts)
 
 # Quarter Counts
 quarter_counts = (
@@ -85,10 +85,53 @@ st.subheader("Yearly Record Counts")
 fig_year = px.line(year_counts, x="year", y="count", title="Yearly Record Counts")
 st.plotly_chart(fig_year)
 
+# ---P2---
+st.title("P2: Session Analytics of Latest Time Period")
+
+# Sliding bar for K months
+max_months = (
+    (sess_df["date"].max().year - sess_df["date"].min().year) * 12
+    + (sess_df["date"].max().month - sess_df["date"].min().month)
+    + 1
+)
+k_months = st.slider("Select Last K Months", min_value=1, max_value=max_months, value=3)
+
+# Filter for the last K months
+latest_date = sess_df["date"].max()
+cutoff_date = latest_date - pd.DateOffset(months=k_months)
+filtered_sess_df = sess_df[sess_df["date"] >= cutoff_date]
+
+st.dataframe(filtered_sess_df)
+
+# Simplify Pie Chart Checkbox
+simplify_pie = st.checkbox("Simplify Pie Charts? (Combine Elements < 1%)")
+
+# Pie Charts
+columns_to_analyze = ["browser", "os", "device", "language", "country"]
+
+for col in columns_to_analyze:
+    st.subheader(f"Pie Chart - {col.capitalize()}")
+    counts = filtered_sess_df[col].value_counts(normalize=True)
+
+    if simplify_pie:
+        others_percentage = counts[
+            counts < 0.01
+        ].sum()  # Calculate percentage for "Others"
+        counts = counts[counts >= 0.01]  # Filter out values < 1%
+        if others_percentage > 0:
+            counts["Others"] = others_percentage  # Add "Others" to counts
+
+    fig = px.pie(
+        counts,
+        values=counts.values,
+        names=counts.index,
+        title=f"{col.capitalize()} Distribution",
+    )
+    st.plotly_chart(fig)
+
 
 # --------------------------------------------------------------------------------------
-# TODO
-# combine n update from existing B PR
+# TODO - combine n update from existing B PR
 
 st.title("Section 2: Umami Website Event Dashboard! (TODO)")
 
