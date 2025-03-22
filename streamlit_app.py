@@ -12,6 +12,7 @@ pg = st.navigation(
             icon="",
         ),
         Page("dashboards/es_eda.py", title="ES EDA", icon="🌐"),
+        Page("dashboards/umami_eda.py", title="UMAMI EDA", icon="🌐"),
         Page("dashboards/duckdb_shell.py", title="DuckDB Shell", icon=""),
     ]
 )
