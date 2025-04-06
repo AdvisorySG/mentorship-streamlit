@@ -1,5 +1,5 @@
 import duckdb
-import duckdb.typing
+from duckdb.typing import VARCHAR
 from elasticsearch.client import Elasticsearch
 from elasticsearch.helpers import scan
 import streamlit as st
@@ -78,26 +78,44 @@ def setup_umamidb(cur: duckdb.DuckDBPyConnection):
     """)
     cur.sql("ATTACH '' AS umamidb (TYPE MYSQL, READ_ONLY);")
 
+    # UDF for creation of mentor_clicks table
+    cur.create_function(
+        "parse_url_query",
+        lambda query_list: json.dumps(parse_url_query(query_list)),
+        # parameters=duckdb.typing.DuckDBPyType(list[str]),
+        return_type=VARCHAR,
+    )
+    columns = [
+        "industries",
+        "organisation",
+        "course_of_study",
+        "school",
+    ]  # Can be obtained dynamically, but usually takes too long so...
+    setup_mentors_clicks(cur, columns)
+
 
 QUERY_INDEX_RE = r"\[(\d+|[a-zA-Z]+)\]"
 
 
 def parse_url_query(query_list: list[str]) -> dict[str, list[str]]:
-    # Adapted from process_query_params from auxiliary_functions.py
-    # Functionally does the same but modified slightly due to different structure of arguments passed in
-    # Also returns a json obj instead of py dict so that duckdb recognizes this structure
+    """Sample Input:
+      q=vincent&
+      size=n_80_n&
+      filters[0][field]=industries&
+      filters[0][values][0]=Banking and Finance&
+      filters[0][type]=all&
+      filters[1][field]=organisation&
+      filters[1][values][0]=Deutsche Bank&
+      filters[1][type]=any
+    Sample Output:
+    {
+        'search_query': ['vincent'].
+        'industries': ['Banking and Finance'],
+        'organization' : ['Deutsche Bank'],
+    }"""
+
     result = defaultdict(list)
 
-    # query_list is a list containing the queries in within the url
-    # each query is a string in the format: key=value
-    # the key of each query can be either:
-    #   q                     -> search query, this would be used as the value under 'search_query' in the returned dict
-    #   filters[0][field]     -> field of the 0th filter, this would be used as the key in the returned dict
-    #   filters[0][type]      -> type of the 0th filter
-    #   filters[0][values][0] -> value(s) of the 0th filter, this would be used as the value in the returned dict
-    # each url can have multiple filters, filtering by different fields with different values and types
-    # this function converts the url into a python dict with the same structure
-    # everything is stored as strings
     filters = defaultdict(
         lambda: dict(
             field=None,
@@ -132,47 +150,37 @@ def parse_url_query(query_list: list[str]) -> dict[str, list[str]]:
         field, values = filter["field"], filter["values"].values()
         result[field].extend(values)
 
-    # for eg, if the url has the following queries:
-    #   size=n_80_n&
-    #   filters[0][field]=industries&
-    #   filters[0][values][0]=Banking and Finance&
-    #   filters[0][type]=all&
-    #   filters[1][field]=organisation&
-    #   filters[1][values][0]=Deutsche Bank&
-    #   filters[1][type]=any
-    # then the result returned would be:
-    # {
-    #     'industries': ['Banking and Finance'],
-    #     'organization' : ['Deutsche Bank'],
-    # }
     return result
 
 
-def get_db(cur, columns):
+def setup_mentors_clicks(cur, columns):
     # Function reads the data from umami and cleans it to the required format
     # 1. Extract the necessary information and format the url to its parameters
-    tmp_db = cur.sql("""
-        USE umamidb;
+    # 2. Convert the url parameters into key-value pairs / json-like object
+    cur.sql("""
+        CREATE TABLE tmp
+        AS
         SELECT created_at,
-            list_sort([param FOR param IN regexp_split_to_array(url_query, '&') IF param LIKE 'q%' OR param LIKE 'filters%']) AS url_params,
-            list_sort([param FOR param IN regexp_split_to_array(referrer_query, '&') IF param LIKE 'q%' OR param LIKE 'filters%']) AS referrer_params,
+            parse_url_query(url_params) AS url_params,
+            referrer_params,
             visit_id
-        FROM website_event
-        WHERE event_type = 1 -- clicks
-            AND url_path LIKE '/mentors%'
-            AND referrer_path LIKE '/mentors%'
-            AND url_params <> referrer_params
-        QUALIFY row_number() OVER (PARTITION BY url_params, referrer_params, visit_id) = 1
-        ORDER BY created_at DESC;
-        """).fetchdf()
-
-    # 2. Convert the url parameters to json-like object
-    tmp_db["url_params"] = tmp_db["url_params"].apply(
-        lambda query_list: json.dumps(parse_url_query(query_list))
-    )  # gets all the query params and makes it a dictionary (parse_url_query) and then serialize into json object (dumps)
+        FROM
+            (
+            SELECT created_at,
+                list_sort([param FOR param IN regexp_split_to_array(url_query, '&') IF param LIKE 'q%' OR param LIKE 'filters%']) AS url_params,
+                list_sort([param FOR param IN regexp_split_to_array(referrer_query, '&') IF param LIKE 'q%' OR param LIKE 'filters%']) AS referrer_params,
+                visit_id
+            FROM umamidb.website_event
+            WHERE event_type = 1 -- clicks
+                AND url_path LIKE '/mentors%'
+                AND referrer_path LIKE '/mentors%'
+                AND url_params <> referrer_params
+            QUALIFY row_number() OVER (PARTITION BY url_params, referrer_params, visit_id) = 1
+            ORDER BY created_at DESC);
+        """)
 
     # 3. Prepare the SQL query statement to convert the json object into individual columns
-    # Basically loop through the columns (above) and extracts out each part in the json obj as a new column
+    # Basically loop through the columns and extracts out each part in the json obj as a new column
     sql_json_query = ", ".join(
         [
             f"CAST(json_extract(url_params, '{col_name}') AS VARCHAR[]) AS {col_name}"
@@ -180,7 +188,13 @@ def get_db(cur, columns):
         ]
     )
     # 4. Convert the json-like object to columns
-    tmp_db = duckdb.query(
-        f"SELECT CAST(created_at AS DATE), visit_id, {sql_json_query} FROM tmp_db"
-    ).to_df()
-    return tmp_db
+    # 5. Write into memory
+    cur.sql(f"""
+        CREATE TABLE mentors_clicks
+        AS
+        SELECT created_at,
+            visit_id,
+            {sql_json_query}
+        FROM tmp;
+        DROP TABLE tmp;
+    """)
