@@ -1,12 +1,14 @@
 import streamlit as st
 from utils.duckdb import get_dbcur
-
 import plotly.express as px
 
 GET_ES_DB_QUERY = "SELECT * FROM elasticsearch"
 cur = get_dbcur()
 cur.execute(GET_ES_DB_QUERY)
-es_df = cur.pl()
+es_df = cur.pl().to_pandas()
+
+# Remove nulls for relevant columns
+es_df = es_df.dropna(subset=["course_of_study", "industries", "organisation", "role", "school", "wave_id"])
 
 st.title("ES EDA Dashboard!")
 
@@ -15,156 +17,144 @@ st.dataframe(es_df)
 
 # --------------------------------------------------------------------------------------
 
-st.subheader("P1: Course of Study (TODO)")
+st.subheader("P1: Course of Study")
 
-# 1. Value Counts (Bar Chart)
-st.subheader("Course of Study Distribution")
-course_counts_desc_df = es_df["course_of_study"].value_counts(sort=True)
-course_counts_desc_df.columns = ["Course", "Count"]  # rename the columns
+course_counts_desc_df = es_df["course_of_study"].value_counts().reset_index()
+course_counts_desc_df.columns = ["Course", "Count"]
+course_counts_desc_df["Percentage"] = (course_counts_desc_df["Count"] / course_counts_desc_df["Count"].sum()) * 100
 
-fig_bar = px.bar(
-    course_counts_desc_df, x="Course", y="Count", labels={"Count": "Count"}
-)  # use the column names from the dataframe
+fig_bar = px.bar(course_counts_desc_df, x="Course", y="Count", text=course_counts_desc_df["Percentage"].round(1).astype(str) + '%')
+fig_bar.update_traces(textposition='outside')
 st.plotly_chart(fig_bar)
 
-# 2. Value Counts (Table)
 st.subheader("Course of Study Counts (Table)")
 st.dataframe(course_counts_desc_df)
 
-# Create visualisations for the top K records
-# User input for K using a slider, deafult at K=20, max of 40 set arbitraily
 top_k = st.slider("Select the number of top courses to display:", 1, 40, 20)
 top_k_courses = course_counts_desc_df.head(top_k)
 
-# 3. Create the pie chart for the top K records
 st.subheader(f"Top {top_k} Course Proportions")
-fig_pie_top_k = px.pie(
-    top_k_courses,
-    values="Count",
-    names="Course",
-    title=f"Top {top_k} Course Distribution",
-)
+fig_pie_top_k = px.pie(top_k_courses, values="Count", names="Course", title=f"Top {top_k} Course Distribution")
 st.plotly_chart(fig_pie_top_k)
 
-# 4. Create the bar chart for the top K records
 st.subheader(f"Top {top_k} Course Counts (Bar Chart)")
-fig_bar_top_k = px.bar(
-    top_k_courses, x="Course", y="Count", title=f"Top {top_k} Course Counts"
-)
+fig_bar_top_k = px.bar(top_k_courses, x="Course", y="Count", text=top_k_courses["Percentage"].round(1).astype(str) + '%')
+fig_bar_top_k.update_traces(textposition='outside')
 st.plotly_chart(fig_bar_top_k)
-
-# TODO:
-# remove nulls
-# For bar charts: insert calculation and showing each course % of total popn (eg econs = 12%, biz = 8.3%)
-# jared to look into - clustering or semantic grouping based on similar courses? since some courses with smaller representation are subset of bigger ones
-
 
 # --------------------------------------------------------------------------------------
 
 st.subheader("P2: Industries")
 
-# Calculate value counts
-# Note usage of explode function, since industries column original data type was a list, hence explode the lists to parse individual elements
-industry_counts_desc = es_df["industries"].explode().value_counts(sort=True)
+industry_counts_desc = es_df["industries"].explode().value_counts().reset_index()
 industry_counts_desc.columns = ["Industry", "Count"]
+industry_counts_desc["Percentage"] = (industry_counts_desc["Count"] / industry_counts_desc["Count"].sum()) * 100
 
-# Full data bar chart
 st.subheader("Industry Counts (Full Data)")
-fig_bar = px.bar(industry_counts_desc, x="Industry", y="Count", title="Industry Counts")
+fig_bar = px.bar(industry_counts_desc, x="Industry", y="Count", text=industry_counts_desc["Percentage"].round(1).astype(str) + '%')
+fig_bar.update_traces(textposition='outside')
 st.plotly_chart(fig_bar)
 
-top_k = st.slider(
-    "Select the number of top industries to display:", 1, len(industry_counts_desc), 20
-)
+top_k = st.slider("Select the number of top industries to display:", 1, len(industry_counts_desc), 20)
 top_k_industries = industry_counts_desc.head(top_k)
 
-# Pie chart for top K industries
 st.subheader(f"Top {top_k} Industry Proportions (Pie Chart)")
-fig_pie_top_k = px.pie(
-    top_k_industries,
-    values="Count",
-    names="Industry",
-    title=f"Top {top_k} Industry Distribution",
-)
+fig_pie_top_k = px.pie(top_k_industries, values="Count", names="Industry", title=f"Top {top_k} Industry Distribution")
 st.plotly_chart(fig_pie_top_k)
 
-# Bar chart for top K industries
 st.subheader(f"Top {top_k} Industry Counts (Bar Chart)")
-fig_bar_top_k = px.bar(
-    top_k_industries, x="Industry", y="Count", title=f"Top {top_k} Industry Counts"
-)
+fig_bar_top_k = px.bar(top_k_industries, x="Industry", y="Count", text=top_k_industries["Percentage"].round(1).astype(str) + '%')
+fig_bar_top_k.update_traces(textposition='outside')
 st.plotly_chart(fig_bar_top_k)
 
 # --------------------------------------------------------------------------------------
 
 st.subheader("P3: Organisations")
 
-org_counts_desc = es_df["organisation"].value_counts(sort=True)
+org_counts_desc = es_df["organisation"].value_counts().reset_index()
 org_counts_desc.columns = ["Organisation", "Count"]
+org_counts_desc["Percentage"] = (org_counts_desc["Count"] / org_counts_desc["Count"].sum()) * 100
 
-# Full data bar chart
 st.subheader("Organisation Counts (Full Data)")
-fig_bar = px.bar(
-    org_counts_desc, x="Organisation", y="Count", title="Organisation Counts"
-)
+fig_bar = px.bar(org_counts_desc, x="Organisation", y="Count", text=org_counts_desc["Percentage"].round(1).astype(str) + '%')
+fig_bar.update_traces(textposition='outside')
 st.plotly_chart(fig_bar)
 
-# Slider for top K organisations
 max_slider_value = min(40, len(org_counts_desc))
-top_k = st.slider(
-    "Select the number of top organisations to display:", 1, max_slider_value, 20
-)
+top_k = st.slider("Select the number of top organisations to display:", 1, max_slider_value, 20)
 top_k_orgs = org_counts_desc.head(top_k)
 
-# Pie chart for top K organisations
 st.subheader(f"Top {top_k} Organisation Proportions (Pie Chart)")
-fig_pie_top_k = px.pie(
-    top_k_orgs,
-    values="Count",
-    names="Organisation",
-    title=f"Top {top_k} Organisation Distribution",
-)
+fig_pie_top_k = px.pie(top_k_orgs, values="Count", names="Organisation", title=f"Top {top_k} Organisation Distribution")
 st.plotly_chart(fig_pie_top_k)
 
-# Bar chart for top K organisations
 st.subheader(f"Top {top_k} Organisation Counts (Bar Chart)")
-fig_bar_top_k = px.bar(
-    top_k_orgs, x="Organisation", y="Count", title=f"Top {top_k} Organisation Counts"
-)
+fig_bar_top_k = px.bar(top_k_orgs, x="Organisation", y="Count", text=top_k_orgs["Percentage"].round(1).astype(str) + '%')
+fig_bar_top_k.update_traces(textposition='outside')
 st.plotly_chart(fig_bar_top_k)
 
 # --------------------------------------------------------------------------------------
 
-st.subheader("P4: Roles (TODO)")
+st.subheader("P4: Roles")
 
-role_counts_desc = es_df["role"].value_counts(sort=True)
+role_counts_desc = es_df["role"].value_counts().reset_index()
 role_counts_desc.columns = ["Role", "Count"]
+role_counts_desc["Percentage"] = (role_counts_desc["Count"] / role_counts_desc["Count"].sum()) * 100
 st.dataframe(role_counts_desc)
 
+fig_bar = px.bar(role_counts_desc, x="Role", y="Count", text=role_counts_desc["Percentage"].round(1).astype(str) + '%')
+fig_bar.update_traces(textposition='outside')
+st.plotly_chart(fig_bar)
 
-# TODO:
-# bar n pie chart of all plus Top K with sliding car (refer to above previously done code)
-# jared to look into - clustering or semantic grouping based on seniority
+top_k = st.slider("Select the number of top roles to display:", 1, min(40, len(role_counts_desc)), 20)
+top_k_roles = role_counts_desc.head(top_k)
+
+fig_pie_top_k = px.pie(top_k_roles, values="Count", names="Role", title=f"Top {top_k} Role Distribution")
+st.plotly_chart(fig_pie_top_k)
+
+fig_bar_top_k = px.bar(top_k_roles, x="Role", y="Count", text=top_k_roles["Percentage"].round(1).astype(str) + '%')
+fig_bar_top_k.update_traces(textposition='outside')
+st.plotly_chart(fig_bar_top_k)
 
 # --------------------------------------------------------------------------------------
 
-st.subheader("P5: Schools (TODO)")
+st.subheader("P5: Schools")
 
-school_counts_desc = es_df["school"].value_counts(sort=True)
+school_counts_desc = es_df["school"].value_counts().reset_index()
 school_counts_desc.columns = ["School", "Count"]
+school_counts_desc["Percentage"] = (school_counts_desc["Count"] / school_counts_desc["Count"].sum()) * 100
 st.dataframe(school_counts_desc)
 
-# TODO:
-# bar n pie chart of all plus Top K with sliding car (refer to above previously done code)
+fig_bar = px.bar(school_counts_desc, x="School", y="Count", text=school_counts_desc["Percentage"].round(1).astype(str) + '%')
+fig_bar.update_traces(textposition='outside')
+st.plotly_chart(fig_bar)
+
+top_k = st.slider("Select the number of top schools to display:", 1, min(40, len(school_counts_desc)), 20)
+top_k_schools = school_counts_desc.head(top_k)
+
+fig_pie_top_k = px.pie(top_k_schools, values="Count", names="School", title=f"Top {top_k} School Distribution")
+st.plotly_chart(fig_pie_top_k)
+
+fig_bar_top_k = px.bar(top_k_schools, x="School", y="Count", text=top_k_schools["Percentage"].round(1).astype(str) + '%')
+fig_bar_top_k.update_traces(textposition='outside')
+st.plotly_chart(fig_bar_top_k)
 
 # --------------------------------------------------------------------------------------
 
-st.subheader("P6: Waves (TODO)")
+st.subheader("P6: Waves")
 
-waveid_counts_desc = es_df["wave_id"].value_counts(sort=True)
-waveid_counts_desc.columns = ["WaveID", "Count"]
-st.dataframe(waveid_counts_desc)
+# Extract year and wave (e.g., from '2021-1' to 2021)
+es_df["year"] = es_df["wave_id"].str.extract(r"(\d{4})")
+wave_counts_by_year = es_df["year"].value_counts().sort_index().reset_index()
+wave_counts_by_year.columns = ["Year", "Count"]
 
-# TODO:
-# bar charts showing breakdown organised based on yearly basis (ie. 2021, 2022, ..), values aggregated on year
-# another sub bar chart showing within each year separate waves breakdown; eg 2021 show 2x bars for 2021-1, 2021-2; also 2023 show one set for 2023-2 and 2023-vjc
+st.subheader("Wave Counts by Year")
+fig_wave_year = px.bar(wave_counts_by_year, x="Year", y="Count", title="Wave Counts by Year")
+st.plotly_chart(fig_wave_year)
+
+wave_counts_full = es_df["wave_id"].value_counts().reset_index()
+wave_counts_full.columns = ["WaveID", "Count"]
+
+st.subheader("Wave Breakdown (by Wave ID)")
+fig_wave_breakdown = px.bar(wave_counts_full, x="WaveID", y="Count", title="Detailed Wave Breakdown")
+st.plotly_chart(fig_wave_breakdown)
