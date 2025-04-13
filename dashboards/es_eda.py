@@ -1,7 +1,6 @@
 import streamlit as st
 from utils.duckdb import get_dbcur
 import plotly.express as px
-import pandas as pd
 
 GET_ES_DB_QUERY = "SELECT * FROM elasticsearch"
 cur = get_dbcur()
