@@ -3,30 +3,12 @@ from elasticsearch.client import Elasticsearch
 from elasticsearch.helpers import scan
 import streamlit as st
 
-import atexit
 from collections import defaultdict
 import html
 import json
-import os
 import re
 import tempfile
 from typing import Any
-
-
-_temp_files = []
-
-
-def cleanup_temp_files():
-    for f in _temp_files:
-        try:
-            if os.path.exists(f):
-                os.remove(f)
-        except FileNotFoundError:
-            pass
-        except PermissionError:
-            pass
-        except OSError:
-            pass
 
 
 @st.cache_resource(ttl=900, max_entries=1)
@@ -48,7 +30,6 @@ def get_dbcur() -> duckdb.DuckDBPyConnection:
 
     cur.sql("SET lock_configuration = true;")
 
-    atexit.register(cleanup_temp_files)
     return cur
 
 
@@ -64,10 +45,7 @@ def setup_elasticsearch(cur: duckdb.DuckDBPyConnection):
         api_key=ELASTICSEARCH_APIKEY,
     )
 
-    temp_file = tempfile.mktemp(suffix=".ndjson")
-    _temp_files.append(temp_file)
-
-    with open(temp_file, "w") as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".ndjson") as f:
         for result in scan(
             client,
             index=ELASTICSEARCH_INDEX,
@@ -75,8 +53,8 @@ def setup_elasticsearch(cur: duckdb.DuckDBPyConnection):
         ):
             f.write(json.dumps(result["_source"]) + "\n")
 
-    cur.sql(f"""CREATE TABLE IF NOT EXISTS elasticsearch AS
-            SELECT * FROM read_ndjson('{temp_file}');""")
+        cur.sql(f"""CREATE TABLE IF NOT EXISTS elasticsearch AS
+                SELECT * FROM read_ndjson('{f.name}');""")
 
 
 UMAMIDB_HOST = st.secrets.connections.mysql.host
