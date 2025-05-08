@@ -5,7 +5,29 @@ from utils.duckdb import get_dbcur
 
 cur = get_dbcur()
 columns = ["industries", "organisation", "course_of_study", "school"]
-db = cur.sql("SELECT * FROM mentors_clicks;").fetchdf()
+
+# Extract out out params according to the search query and filters, creating a column for each filter
+sql_json_query = "CAST(json_extract(url_params, 'q') AS VARCHAR) AS search_query, " + ", ".join(
+        [
+            f"""CAST(
+                    json_extract(
+                        json_extract(
+                            json_extract(url_params, 'filters'),
+                            '{col_name}'
+                        ),
+                        'values'
+                    ) 
+                AS VARCHAR[]) AS {col_name}"""
+            for col_name in columns
+        ]
+    )
+db = cur.sql(f"""
+        SELECT
+            visit_id,
+            {sql_json_query}
+        FROM mentor_visits
+    """).fetchdf()
+
 full_size = len(db)
 conn = duckdb.connect()
 cur2 = conn.cursor()
