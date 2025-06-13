@@ -223,3 +223,4 @@ def setup_umamidb(cur: duckdb.DuckDBPyConnection):
             ORDER BY created_at ASC
         );
     """)
+
