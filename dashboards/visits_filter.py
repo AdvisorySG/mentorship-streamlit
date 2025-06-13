@@ -55,7 +55,7 @@ with st.form("full query"):
             ).fetch_df()
         st.write(
             "Percentage of data that has this combination: ",
-            len(db_copy) / full_size * 100,
+            round(len(db_copy) / full_size * 100, 2),
             "%",
         )
         st.dataframe(db_copy)
