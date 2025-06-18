@@ -1,11 +1,44 @@
 import streamlit as st
 import duckdb
 import seaborn as sns
-from utils.duckdb import get_dbcur, get_db
+from utils.duckdb import get_dbcur
 
-columns = ["industries", "organisation", "course_of_study", "school"] # Can be obtained dynamically, but usually takes too long so...
+columns = [
+    "industries",
+    "organisation",
+    "course_of_study",
+    "school",
+]  # Can be obtained dynamically, but usually takes too long so...
 cur = get_dbcur()
-db = get_db(cur, columns)
+# Extract out out params according to the search query and filters, creating a column for each filter
+# This is the same code as in visits_filter.py, but joins the created_at col which is not in the mentor_visits table
+sql_json_query = (
+    "CAST(json_extract(url_params, 'q') AS VARCHAR) AS search_query, "
+    + ", ".join(
+        [
+            f"""CAST(
+                    json_extract(
+                        json_extract(
+                            json_extract(url_params, 'filters'),
+                            '{col_name}'
+                        ),
+                        'values'
+                    )
+                AS VARCHAR[]) AS {col_name}"""
+            for col_name in columns
+        ]
+    )
+)
+db = cur.sql(f"""
+        SELECT
+            t1.event_id,
+            t1.visit_id,
+            t2.created_at,
+            {sql_json_query}
+        FROM mentor_visits AS t1
+            INNER JOIN umamidb.website_event AS t2
+        ON t1.event_id = t2.event_id
+    """).fetchdf()
 st.dataframe(db)
 
 # A series which we will use often to filter results
@@ -21,22 +54,20 @@ top_industries = duckdb.query("""
 st.dataframe(top_industries)
 
 # Query 1
-st.subheader("Query 1: Frequency of single instance of industry selected, where the count > 5")
+st.subheader(
+    "Query 1: Frequency of single instance of industry selected, where the count > 5"
+)
 tmp_db = db.copy()
 tmp_db = duckdb.query("""
-                  SELECT CAST(industries AS VARCHAR) AS industries, 
+                  SELECT CAST(industries AS VARCHAR) AS industries,
                     COUNT(industries) AS count
-                  FROM tmp_db 
+                  FROM tmp_db
                   WHERE industries IS NOT NULL
                     AND len(industries) < 2
                   GROUP BY industries
                   HAVING count > 5;""").to_df()
 st.dataframe(tmp_db)
-plot = sns.histplot(
-    data=tmp_db,
-    x='industries',
-    y='count'
-)
+plot = sns.histplot(data=tmp_db, x="industries", y="count")
 st.pyplot(plot.get_figure())
 
 # Query 2
@@ -44,26 +75,24 @@ st.subheader("Query 2: Line graph trend of industry over time")
 tmp_db = db.copy()
 tmp_db = duckdb.query("""
                 SELECT make_date(YEAR(created_at), MONTH(created_at), 1) AS created_at,
-                    CAST(industries AS VARCHAR) AS industries, 
+                    CAST(industries AS VARCHAR) AS industries,
                     1 AS count
-                FROM tmp_db 
+                FROM tmp_db
                 WHERE industries IS NOT NULL
-                    AND len(industries) < 2;"""
-                      ).to_df()
+                    AND len(industries) < 2;""").to_df()
 tmp_db = duckdb.query("""
                 SELECT DISTINCT CAST(created_at AS VARCHAR) AS date, industries, SUM(count)
                 OVER(PARTITION BY industries ORDER BY date) AS cumulative_count
                 FROM tmp_db
-                ORDER BY date ASC, industries ASC;"""
-                      ).to_df()
+                ORDER BY date ASC, industries ASC;""").to_df()
 st.dataframe(tmp_db)
 plot.clear()
 plot = sns.lineplot(
     data=tmp_db,
-    x='date',
-    y='cumulative_count',
-    hue='industries',
-    legend='brief',
+    x="date",
+    y="cumulative_count",
+    hue="industries",
+    legend="brief",
 )
 plot.figure.set_figheight(20)
 plot.figure.set_figwidth(25)
@@ -72,7 +101,7 @@ st.pyplot(plot.get_figure())
 st.text("Query 2.1: Line graph for only top 10 industries")
 tmp_db = duckdb.query("""
                     SELECT date, tmp_db.industries, cumulative_count
-                    FROM tmp_db 
+                    FROM tmp_db
                     JOIN top_industries
                     ON tmp_db.industries = top_industries.industries
                     ORDER BY date ASC, tmp_db.industries ASC;""").to_df()
@@ -80,10 +109,10 @@ st.dataframe(tmp_db)
 plot.clear()
 plot = sns.lineplot(
     data=tmp_db,
-    x='date',
-    y='cumulative_count',
-    hue='industries',
-    legend='brief',
+    x="date",
+    y="cumulative_count",
+    hue="industries",
+    legend="brief",
 )
 st.pyplot(plot.get_figure())
 
@@ -98,15 +127,14 @@ tmp_db = duckdb.query("""
                     SELECT industries FROM top_industries
                 )
                 GROUP BY date, industries
-                ORDER BY date ASC, industries ASC;"""
-                ).to_df()
+                ORDER BY date ASC, industries ASC;""").to_df()
 st.dataframe(tmp_db)
 plot.clear()
 plot = sns.barplot(
     data=tmp_db,
-    x='date',
-    y='clicks_per_month',
-    hue='industries',
+    x="date",
+    y="clicks_per_month",
+    hue="industries",
 )
 plot.figure.set_figwidth(15)
 st.pyplot(plot.get_figure())
