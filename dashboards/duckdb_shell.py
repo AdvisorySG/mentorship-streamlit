@@ -10,22 +10,22 @@ st.set_page_config(layout="wide")
 
 cur = get_dbcur()
 
-COMBINED_QUERY = """
-SHOW ALL TABLES;
-
-SELECT COUNT(*) FROM elasticsearch;
-SELECT COUNT(*) FROM umamidb.umami.event_data;
-SELECT COUNT(*) FROM umamidb.umami.session;
-SELECT COUNT(*) FROM umamidb.umami.session_data;
-SELECT COUNT(*) FROM umamidb.umami.website;
-SELECT COUNT(*) FROM umamidb.umami.website_event;
-
-SELECT * FROM elasticsearch LIMIT 1000;
-SELECT * FROM umamidb.umami.event_data LIMIT 1000;
-SELECT * FROM umamidb.umami.session LIMIT 1000;
-SELECT * FROM umamidb.umami.session_data LIMIT 1000;
-SELECT * FROM umamidb.umami.website LIMIT 1000;
-SELECT * FROM umamidb.umami.website_event LIMIT 1000;"""
+TABLES = [
+    "elasticsearch",
+    "mentor_visits",
+    "umamidb.umami.event_data",
+    "umamidb.umami.session",
+    "umamidb.umami.session_data",
+    "umamidb.umami.website",
+    "umamidb.umami.website_event",
+]
+COMBINED_QUERY = "\n".join(
+    ["SHOW ALL TABLES;"]
+    + [""]
+    + [f"SELECT COUNT(*) FROM {table};" for table in TABLES]
+    + [""]
+    + [f"SELECT * FROM {table} LIMIT 1000;" for table in TABLES]
+)
 
 st.write("Code adapted from [ducklit](https://github.com/MarkyMan4/ducklit).")
 st.write("Ctrl+enter to run the SQL commands.")
@@ -45,6 +45,6 @@ if len(queries) > 0:
             end = time.time()
 
             st.write(df)
-            st.write(f"Time taken: {round(end - start, 2)} s") 
+            st.write(f"Time taken: {round(end - start, 2)} s")
         except Exception:
             st.code(traceback.format_exc())
